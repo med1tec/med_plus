@@ -1,7 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, set, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, push, onValue, remove, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// إعداداتك الخاصة (Firebase)
 const firebaseConfig = {
     apiKey: "AIzaSyDYV2c9_PAcla_7btxKA7L7nHWmroD94zQ",
     authDomain: "myalarmapp-26e3e.firebaseapp.com",
@@ -14,88 +13,109 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const userId = "master_user";
-const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+const alarmSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+let userId = localStorage.getItem('med_user_id');
+let lastTriggered = "";
 
-// تسجيل الـ Service Worker لتمكين إشعارات الخلفية
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
+// 1. تسلسل الدخول
+if (userId) {
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    document.getElementById('userBadge').innerText = "ID: " + userId;
+    startSystem();
 }
 
-// تفعيل الصوت والإذن عند أول ضغطة
-document.body.addEventListener('click', () => {
-    if (Notification.permission !== "granted") Notification.requestPermission();
-    sound.play().then(() => { sound.pause(); sound.currentTime = 0; });
-}, { once: true });
-
-// حفظ الدواء في Firebase
-document.getElementById('saveBtn').onclick = () => {
-    const name = document.getElementById('medName').value;
-    const time = document.getElementById('medTime').value;
-    if (name && time) {
-        const newRef = push(ref(db, `users/${userId}/meds`));
-        set(newRef, { name, time, lastNotifiedDate: "" });
-        document.getElementById('medName').value = "";
+document.getElementById('authBtn').onclick = () => {
+    const key = document.getElementById('loginKey').value.trim();
+    if (key) {
+        localStorage.setItem('med_user_id', key);
+        location.reload();
     }
 };
 
-// الفحص اليومي الذكي
-setInterval(() => {
-    const now = new Date();
-    const today = now.toDateString(); // تاريخ اليوم
-    const currentTime = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
-
-    onValue(ref(db, `users/${userId}/meds`), (snapshot) => {
-        const meds = snapshot.val();
-        for (let id in meds) {
-            // إذا تطابق الوقت ولم يتم إرسال إشعار "اليوم"
-            if (meds[id].time === currentTime && meds[id].lastNotifiedDate !== today) {
-                sendMedNotification(id, meds[id].name, today);
+// 2. تشغيل النظام الواقعي
+function startSystem() {
+    // جلب البيانات من المسار الخاص بالمستخدم
+    onValue(ref(db, `alarms/${userId}`), (snap) => {
+        const list = document.getElementById('medList');
+        list.innerHTML = "";
+        const data = snap.val();
+        if (data) {
+            for (let id in data) {
+                const item = document.createElement('div');
+                item.className = "med-item";
+                item.innerHTML = `<div><strong>${data[id].name}</strong><br><small>${data[id].time}</small></div>`;
+                const delBtn = document.createElement('button');
+                delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                delBtn.style = "background:none; border:none; color:#ff4b2b; cursor:pointer;";
+                delBtn.onclick = () => remove(ref(db, `alarms/${userId}/${id}`));
+                item.appendChild(delBtn);
+                list.appendChild(item);
             }
         }
-    }, { onlyOnce: true });
-}, 1000);
+    });
 
-function sendMedNotification(id, name, date) {
-    sound.play();
+    // فحص المواعيد
+    setInterval(() => {
+        const now = new Date();
+        const curTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        
+        if (now.getSeconds() === 0 && lastTriggered !== curTime) {
+            onValue(ref(db, `alarms/${userId}`), (snap) => {
+                const data = snap.val();
+                for (let id in data) {
+                    if (data[id].time === curTime) {
+                        lastTriggered = curTime;
+                        triggerAlarm(data[id].name);
+                    }
+                }
+            }, { onlyOnce: true });
+        }
+    }, 1000);
+}
+
+// 3. وظيفة التنبيه (صوت + إشعار + واجهة)
+function triggerAlarm(name) {
+    alarmSound.play().catch(() => {});
     
-    // إشعار نظام (حتى لو التطبيق مغلق)
     if (Notification.permission === "granted") {
         navigator.serviceWorker.ready.then(reg => {
-            reg.showNotification('تذكير الدواء اليومي 💊', {
-                body: `حان موعد تناول جرعة: ${name}`,
-                icon: 'https://cdn-icons-png.flaticon.com/512/822/822143.png',
-                vibrate: [200, 100, 200]
+            reg.showNotification(`🚨 موعد جرعة: ${name}`, {
+                body: "حان موعد دواءك الآن، فضلاً قم بتناوله.",
+                icon: "https://cdn-icons-png.flaticon.com/512/822/822143.png",
+                vibrate: [200, 100, 200],
+                tag: 'med-alert'
             });
         });
     }
 
-    // إظهار الواجهة
-    document.getElementById('alertOverlay').classList.remove('hidden');
-    document.getElementById('alertMedName').innerText = name;
-
-    // تحديث قاعدة البيانات: تم الإرسال اليوم
-    set(ref(db, `users/${userId}/meds/${id}/lastNotifiedDate`), date);
-
-    document.getElementById('doneBtn').onclick = () => {
-        document.getElementById('alertOverlay').classList.add('hidden');
-        sound.pause();
-    };
+    document.getElementById('activeMedName').innerText = name;
+    document.getElementById('alarmOverlay').classList.remove('hidden');
 }
 
-// عرض القائمة
-onValue(ref(db, `users/${userId}/meds`), (snapshot) => {
-    const listDiv = document.getElementById('medList');
-    listDiv.innerHTML = "";
-    const data = snapshot.val();
-    for (let id in data) {
-        const item = document.createElement('div');
-        item.className = "med-item";
-        item.innerHTML = `<div><b>${data[id].name}</b><br><small>${data[id].time}</small></div>`;
-        const delBtn = document.createElement('button');
-        delBtn.innerText = "❌"; delBtn.style="background:none; border:none; cursor:pointer;";
-        delBtn.onclick = () => remove(ref(db, `users/${userId}/meds/${id}`));
-        item.appendChild(delBtn);
-        listDiv.appendChild(item);
+// 4. تفعيل أزرار الإضافة والخروج
+document.getElementById('addBtn').onclick = () => {
+    const name = document.getElementById('medName').value.trim();
+    const time = document.getElementById('medTime').value;
+    if (name && time) {
+        push(ref(db, `alarms/${userId}`), { name, time });
+        document.getElementById('medName').value = "";
     }
-});
+};
+
+document.getElementById('stopSoundBtn').onclick = () => {
+    document.getElementById('alarmOverlay').classList.add('hidden');
+    alarmSound.pause();
+    alarmSound.currentTime = 0;
+};
+
+document.getElementById('logoutBtn').onclick = () => {
+    localStorage.clear();
+    location.reload();
+};
+
+// تسجيل الـ Service Worker وطلب الإذن عند أول لمسة
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+    document.body.addEventListener('click', () => Notification.requestPermission(), {once: true});
+}
