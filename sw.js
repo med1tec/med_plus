@@ -1,21 +1,20 @@
-// الانتظار حتى يتم تثبيت الخدمة وتفعيلها فوراً
-self.addEventListener('install', (e) => self.skipWaiting());
-self.addEventListener('activate', (e) => self.clients.claim());
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', () => self.clients.claim());
 
-// استقبال إشارة "التنبيه" من التطبيق (حتى في الخلفية)
 self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'ALARM_NOW') {
+    if (event.data.type === 'ALARM_NOW') {
         const options = {
             body: event.data.body,
             icon: 'https://cdn-icons-png.flaticon.com/512/822/822143.png',
-            vibrate: [500, 200, 500],
-            tag: 'med-alert-' + Date.now(), // وسام فريد لكل إشعار لضمان الانبثاق
+            badge: 'https://cdn-icons-png.flaticon.com/512/822/822143.png',
+            vibrate: [500, 110, 500, 110, 500], // اهتزاز قوي جداً
+            tag: 'med-alert', // لمنع تكرار الإشعارات المزعجة
             renotify: true,
-            requireInteraction: true, // يبقى الإشعار حتى يتفاعل معه المستخدم
-            priority: 'high',         // ضروري للأندرويد
+            requireInteraction: true, // الإشعار لن يختفي في الويندوز والايفون حتى يضغط عليه المستخدم
+            priority: 'high', // للأندرويد لضمان الظهور في الجزء العلوي
             actions: [
                 { action: 'open', title: 'فتح التطبيق' },
-                { action: 'done', title: 'تم التناول ✅' }
+                { action: 'close', title: 'تم التناول' }
             ]
         };
 
@@ -25,12 +24,11 @@ self.addEventListener('message', (event) => {
     }
 });
 
-// فتح التطبيق عند الضغط على الإشعار
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     event.waitUntil(
-        clients.matchAll({ type: 'window' }).then(windowClients => {
-            if (windowClients.length > 0) return windowClients[0].focus();
+        clients.matchAll({ type: 'window' }).then(clis => {
+            if (clis.length > 0) return clis[0].focus();
             return clients.openWindow('/');
         })
     );
