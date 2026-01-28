@@ -2,58 +2,179 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>MedPulse Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مساعد الأدوية الذكي</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#020205">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-        :root { --neon: #00f3ff; --dark: #020205; --glass: rgba(255, 255, 255, 0.05); }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--dark); display: flex; justify-content: center; align-items: center; font-family: sans-serif; color: white; overflow: hidden; direction: rtl; }
-        .bg-layer { position: fixed; inset: 0; z-index: -1; background: radial-gradient(circle, #1a1f35 0%, #000 100%); }
-        .glass-card { width: 90%; max-width: 400px; height: 85vh; background: var(--glass); backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.1); border-radius: 40px; padding: 25px; display: flex; flex-direction: column; position: relative; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+        :root {
+            --neon-blue: #00f3ff;
+            --danger: #ff4b2b;
+            --dark-bg: #020205;
+            --glass: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* حاوية التطبيق الزجاجية */
+        .app-container {
+            width: 95%;
+            max-width: 450px;
+            height: 90vh;
+            background: var(--glass);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        }
+
         .hidden { display: none !important; }
-        #authScreen, .full-overlay { position: absolute; inset: 0; z-index: 100; background: #020205; border-radius: 40px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 30px; text-align: center; }
-        .neon-input { width: 100%; padding: 14px; margin: 10px 0; border-radius: 12px; border: 1px solid var(--neon); background: rgba(0,0,0,0.5); color: white; text-align: center; box-sizing: border-box; outline: none; }
-        .primary-btn { width: 100%; padding: 15px; border-radius: 12px; border: none; background: var(--neon); color: black; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .primary-btn:active { transform: scale(0.98); }
-        .med-list { flex: 1; overflow-y: auto; margin-top: 20px; padding-left: 5px; }
-        .med-item { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 15px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border-right: 4px solid var(--neon); }
-        .app-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .bell-anim { font-size: 4rem; animation: shake 0.5s infinite; color: var(--neon); }
-        @keyframes shake { 0%, 100% {transform: rotate(0);} 25% {transform: rotate(15deg);} 75% {transform: rotate(-15deg);} }
+
+        /* شاشة الدخول */
+        .auth-content {
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        /* الحقول والأزرار */
+        input {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.3);
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        input:focus { border-color: var(--neon-blue); }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border-radius: 15px;
+            border: none;
+            background: var(--neon-blue);
+            color: black;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 16px;
+        }
+
+        .btn:active { transform: scale(0.98); }
+
+        /* قائمة الأدوية */
+        .med-item {
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-right: 4px solid var(--neon-blue);
+        }
+
+        #medList {
+            overflow-y: auto;
+            flex-grow: 1;
+            margin-top: 20px;
+        }
+
+        /* واجهة التنبيه الكبيرة (Overlay) */
+        #alarmOverlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--dark-bg);
+            z-index: 1000;
+            border-radius: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .alarm-icon {
+            font-size: 80px;
+            color: var(--neon-blue);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); text-shadow: 0 0 0px var(--neon-blue); }
+            50% { transform: scale(1.1); text-shadow: 0 0 20px var(--neon-blue); }
+            100% { transform: scale(1); text-shadow: 0 0 0px var(--neon-blue); }
+        }
+
+        #userBadge {
+            font-size: 12px;
+            color: var(--neon-blue);
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
-    <div class="bg-layer"></div>
-    <div class="glass-card">
-        <div id="authScreen">
-            <i class="fas fa-lock-open" style="font-size: 3rem; color: var(--neon); margin-bottom: 15px;"></i>
-            <h2>الدخول للمنظومة</h2>
-            <input type="password" id="loginKey" placeholder="أدخل رمزك الخاص" class="neon-input">
-            <button id="authBtn" class="primary-btn">دخول آمن</button>
+
+    <div class="app-container">
+        
+        <div id="authScreen" class="auth-content">
+            <i class="fas fa-user-shield" style="font-size: 50px; color: var(--neon-blue);"></i>
+            <h2>الدخول بالرمز الخاص</h2>
+            <p>أدخل رمزك لمزامنة أدويتك</p>
+            <input type="password" id="loginKey" placeholder="أدخل الرمز هنا...">
+            <button id="authBtn" class="btn">دخول آمن</button>
         </div>
 
-        <div id="mainApp" class="hidden" style="height: 100%; display: flex; flex-direction: column;">
-            <header class="app-header">
-                <button id="logoutBtn" style="background:none; border:none; color:#ff0055; cursor:pointer;"><i class="fas fa-power-off fa-lg"></i></button>
-                <h2 style="color: var(--neon); margin:0;">MedPulse</h2>
-                <span id="userBadge" style="font-size: 0.7rem; opacity: 0.6;"></span>
-            </header>
-
-            <div class="input-area">
-                <input type="text" id="medName" placeholder="اسم الدواء..." class="neon-input">
-                <input type="time" id="medTime" class="neon-input" style="font-size: 1.2rem;">
-                <button id="addBtn" class="primary-btn">حفظ الموعد +</button>
+        <div id="mainApp" class="hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0;">أدويتي <span id="userBadge"></span></h3>
+                <button id="logoutBtn" style="background:none; border:none; color:var(--danger); cursor:pointer;">
+                    <i class="fas fa-sign-out-alt fa-lg"></i>
+                </button>
             </div>
 
-            <div id="medList" class="med-list"></div>
+            <div style="margin-top: 20px;">
+                <input type="text" id="medName" placeholder="اسم الدواء (مثلاً: بنادول)">
+                <input type="time" id="medTime">
+                <button id="addBtn" class="btn"><i class="fas fa-plus-circle"></i> إضافة موعد</button>
+            </div>
+
+            <div id="medList">
+                </div>
         </div>
 
-        <div id="alarmOverlay" class="hidden full-overlay">
-            <div class="bell-anim">🔔</div>
-            <h1 id="activeMedName" style="color: var(--neon);">--</h1>
-            <p>حان الآن موعد جرعتك!</p>
-            <button id="stopSoundBtn" class="primary-btn" style="background: #ff0055; color: white;">تم التناول ✓</button>
+        <div id="alarmOverlay" class="hidden">
+            <div class="alarm-icon"><i class="fas fa-pills"></i></div>
+            <h1 style="margin: 20px 0;">حان موعد الدواء!</h1>
+            <h2 id="activeMedName" style="color: var(--neon-blue);">---</h2>
+            <p>يرجى تناول الجرعة الآن للحفاظ على سلامتك</p>
+            <br>
+            <button id="stopSoundBtn" class="btn" style="background: var(--danger); color: white;">إيقاف التنبيه</button>
         </div>
+
     </div>
 
     <script type="module" src="app.js"></script>
