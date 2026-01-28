@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedPulse | المنظم الإلكتروني</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div class="glass-container">
+        <header>
+            <h1>MedPulse</h1>
+            <p>سيصلك إشعار عند كل موعد</p>
+        </header>
+
+        <div class="input-card">
+            <input type="text" id="medName" placeholder="اسم الدواء (مثلاً: بنادول)">
+            <input type="time" id="medTime">
+            <button id="saveBtn">حفظ الموعد النهائي</button>
+        </div>
+
+        <div id="medList" class="med-list"></div>
+    </div>
+
+    <div id="alertOverlay" class="alert-overlay hidden">
+        <div class="alert-box">
+            <h2 style="color: #00f3ff;">🔔 حان وقت الجرعة</h2>
+            <p id="alertMedName" style="font-size: 1.5em; margin: 15px 0;"></p>
+            <button id="doneBtn">تم تناول الدواء ✓</button>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
