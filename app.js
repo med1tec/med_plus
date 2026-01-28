@@ -72,14 +72,13 @@ function startSystem() {
         }
     }, 1000);
 }
-
-// --- 3. وظيفة التنبيه (الانبثاق العلوي الاحترافي) ---
+// --- 3. وظيفة التنبيه (المطورة لتعمل في الخلفية والمنبثق العلوي) ---
 function triggerAlarm(name) {
-    // تشغيل الصوت
+    // تشغيل الصوت في الواجهة
     alarmSound.play().catch(() => console.log("الصوت بانتظار تفاعل"));
     
-    // إرسال رسالة للـ Service Worker ليقوم بإظهار الإشعار المنبثق (Heads-up)
-    if (Notification.permission === "granted" && navigator.serviceWorker.controller) {
+    // إرسال رسالة للـ Service Worker (هذا ما يضمن ظهور الإشعار والموقع مغلق)
+    if (navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({
             type: 'ALARM_NOW',
             title: `💊 موعد جرعة: ${name}`,
@@ -113,15 +112,26 @@ document.getElementById('logoutBtn').onclick = () => {
     location.reload();
 };
 
-// تسجيل الـ Service Worker
+// --- تسجيل الـ Service Worker المطور (للبقاء حياً في الخلفية) ---
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').then(reg => {
-        console.log("Service Worker جاهز");
+    // التحديث عبر الكاش: 'none' لضمان تحميل الكود الجديد دائماً
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+    .then(reg => {
+        console.log("Service Worker جاهز ومسجل بنجاح");
+        
+        // سر الويندوز والأندرويد: فحص التحديثات كل ساعة لضمان بقاء الخدمة نشطة
+        setInterval(() => {
+            reg.update();
+            console.log("تم تحديث خدمة الخلفية لضمان الاستمرارية");
+        }, 1000 * 60 * 60);
     });
+
     // طلب إذن الإشعارات عند أول لمسة للشاشة
     document.body.addEventListener('click', () => {
-        if (Notification.permission === "default") {
-            Notification.requestPermission();
+        if (Notification.permission !== "granted") {
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") console.log("تم السماح بالإشعارات");
+            });
         }
     }, {once: true});
 }

@@ -1,21 +1,21 @@
+// الانتظار حتى يتم تثبيت الخدمة وتفعيلها فوراً
 self.addEventListener('install', (e) => self.skipWaiting());
 self.addEventListener('activate', (e) => self.clients.claim());
 
+// استقبال إشارة "التنبيه" من التطبيق (حتى في الخلفية)
 self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'ALARM_NOW') {
         const options = {
             body: event.data.body,
             icon: 'https://cdn-icons-png.flaticon.com/512/822/822143.png',
-            badge: 'https://cdn-icons-png.flaticon.com/512/822/822143.png',
-            vibrate: [500, 110, 500, 110, 450],
-            tag: 'urgent-pills',
+            vibrate: [500, 200, 500],
+            tag: 'med-alert-' + Date.now(), // وسام فريد لكل إشعار لضمان الانبثاق
             renotify: true,
-            // ميزات الانبثاق للأندرويد والويندوز
-            requireInteraction: true, 
-            priority: 'high', 
+            requireInteraction: true, // يبقى الإشعار حتى يتفاعل معه المستخدم
+            priority: 'high',         // ضروري للأندرويد
             actions: [
-                { action: 'show', title: 'عرض التفاصيل' },
-                { action: 'close', title: 'تم التناول ✅' }
+                { action: 'open', title: 'فتح التطبيق' },
+                { action: 'done', title: 'تم التناول ✅' }
             ]
         };
 
@@ -25,12 +25,12 @@ self.addEventListener('message', (event) => {
     }
 });
 
-// التعامل مع الضغط على الإشعار
+// فتح التطبيق عند الضغط على الإشعار
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     event.waitUntil(
-        clients.matchAll({ type: 'window' }).then(clientsList => {
-            if (clientsList.length > 0) return clientsList[0].focus();
+        clients.matchAll({ type: 'window' }).then(windowClients => {
+            if (windowClients.length > 0) return windowClients[0].focus();
             return clients.openWindow('/');
         })
     );
