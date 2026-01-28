@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, onValue, remove, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDYV2c9_PAcla_7btxKA7L7nHWmroD94zQ",
@@ -35,7 +35,6 @@ document.getElementById('authBtn').onclick = () => {
 
 // 2. تشغيل النظام الواقعي
 function startSystem() {
-    // جلب البيانات من المسار الخاص بالمستخدم
     onValue(ref(db, `alarms/${userId}`), (snap) => {
         const list = document.getElementById('medList');
         list.innerHTML = "";
@@ -55,7 +54,6 @@ function startSystem() {
         }
     });
 
-    // فحص المواعيد
     setInterval(() => {
         const now = new Date();
         const curTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -74,18 +72,16 @@ function startSystem() {
     }, 1000);
 }
 
-// 3. وظيفة التنبيه (صوت + إشعار + واجهة)
+// 3. وظيفة التنبيه (دمج ميزة الانبثاق العلوي الاحترافية)
 function triggerAlarm(name) {
-    alarmSound.play().catch(() => {});
+    alarmSound.play().catch(() => console.log("الصوت بانتظار تفاعل"));
     
-    if (Notification.permission === "granted") {
-        navigator.serviceWorker.ready.then(reg => {
-            reg.showNotification(`🚨 موعد جرعة: ${name}`, {
-                body: "حان موعد دواءك الآن، فضلاً قم بتناوله.",
-                icon: "https://cdn-icons-png.flaticon.com/512/822/822143.png",
-                vibrate: [200, 100, 200],
-                tag: 'med-alert'
-            });
+    // إرسال البيانات للـ SW لإظهار المظهر المنبثق بالأزرار (مثل الصورة المطلوبة)
+    if (Notification.permission === "granted" && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+            type: 'HEADS_UP_NOTIFICATION',
+            title: `🚨 موعد دواء: ${name}`,
+            body: 'حان موعد جرعتك الآن. اضغط للتناول أو العرض.'
         });
     }
 
@@ -93,7 +89,7 @@ function triggerAlarm(name) {
     document.getElementById('alarmOverlay').classList.remove('hidden');
 }
 
-// 4. تفعيل أزرار الإضافة والخروج
+// 4. أزرار التحكم
 document.getElementById('addBtn').onclick = () => {
     const name = document.getElementById('medName').value.trim();
     const time = document.getElementById('medTime').value;
@@ -114,8 +110,14 @@ document.getElementById('logoutBtn').onclick = () => {
     location.reload();
 };
 
-// تسجيل الـ Service Worker وطلب الإذن عند أول لمسة
+// تسجيل الـ SW وطلب الإذن
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-    document.body.addEventListener('click', () => Notification.requestPermission(), {once: true});
+    navigator.serviceWorker.register('sw.js').then(reg => {
+        console.log("Service Worker جاهز");
+    });
+    document.body.addEventListener('click', () => {
+        if (Notification.permission !== "granted") {
+            Notification.requestPermission();
+        }
+    }, {once: true});
 }
